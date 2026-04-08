@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic Tac Toe</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      overflow: hidden;
+    }
+
+    #app {
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #fff;
+      margin-bottom: 0.4rem;
+      text-shadow: 0 0 20px rgba(255,255,255,0.3);
+      animation: fadeDown 0.6s ease;
+    }
+
+    #status {
+      font-size: 1.2rem;
+      margin-bottom: 1.4rem;
+      min-height: 1.6em;
+      color: #e0e0e0;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      transition: color 0.3s;
+      animation: fadeDown 0.7s ease;
+    }
+
+    #status.x-turn  { color: #e05c7a; }
+    #status.o-turn  { color: #5cb8ff; }
+    #status.x-wins  { color: #e05c7a; animation: pulse 0.5s ease; }
+    #status.o-wins  { color: #5cb8ff; animation: pulse 0.5s ease; }
+    #status.draw    { color: #ffd166; animation: pulse 0.5s ease; }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 8px;
+      margin: 0 auto 1.6rem;
+      width: fit-content;
+      animation: fadeUp 0.7s ease;
+    }
+
+    .cell {
+      width: 110px;
+      height: 110px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 3rem;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s, transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+      backdrop-filter: blur(4px);
+    }
+
+    .cell:hover:not(.taken) {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.35);
+      transform: scale(1.05);
+      box-shadow: 0 0 18px rgba(255,255,255,0.1);
+    }
+
+    .cell.taken {
+      cursor: default;
+    }
+
+    .cell.x {
+      color: #e05c7a;
+      text-shadow: 0 0 12px rgba(224, 92, 122, 0.7);
+    }
+
+    .cell.o {
+      color: #5cb8ff;
+      text-shadow: 0 0 12px rgba(92, 184, 255, 0.7);
+    }
+
+    /* Pop-in animation when a mark is placed */
+    @keyframes popIn {
+      0%   { transform: scale(0.3); opacity: 0; }
+      70%  { transform: scale(1.15); }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+
+    .cell.pop {
+      animation: popIn 0.25s ease forwards;
+    }
+
+    /* Winning cells pulse */
+    @keyframes winPulse {
+      0%, 100% { background: rgba(255, 209, 102, 0.25); box-shadow: 0 0 20px rgba(255,209,102,0.5); }
+      50%       { background: rgba(255, 209, 102, 0.45); box-shadow: 0 0 35px rgba(255,209,102,0.8); }
+    }
+
+    .cell.winner {
+      animation: winPulse 0.8s ease infinite;
+      border-color: #ffd166;
+    }
+
+    /* Status animations */
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    #restart {
+      padding: 0.65rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      animation: fadeUp 0.8s ease;
+    }
+
+    #restart:hover {
+      background: rgba(255,255,255,0.18);
+      transform: scale(1.05);
+      box-shadow: 0 0 18px rgba(255,255,255,0.15);
+    }
+
+    #restart:active {
+      transform: scale(0.97);
+    }
+
+    /* Confetti particles */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      pointer-events: none;
+      animation: confettiFall linear forwards;
+    }
+
+    @keyframes confettiFall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Tic Tac Toe</h1>
+    <p id="status">Player X's turn</p>
+    <div id="board">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+    <button id="restart">Restart</button>
+  </div>
+  <script>
+    // --- State ---
+    let board = Array(9).fill(null);
+    let currentPlayer = 'X';
+    let gameOver = false;
+
+    // --- Constants ---
+    const WINNING_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6],
+    ];
+
+    const CONFETTI_COLORS = ['#e05c7a', '#5cb8ff', '#ffd166', '#06d6a0', '#a78bfa'];
+
+    function getWinningLine(b, player) {
+      for (const line of WINNING_LINES) {
+        const [a, i, j] = line;
+        if (b[a] === player && b[i] === player && b[j] === player) return line;
+      }
+      return null;
+    }
+
+    function isBoardFull(b) {
+      return b.every(cell => cell !== null);
+    }
+
+    // --- DOM refs ---
+    const statusEl = document.getElementById('status');
+    const cells = document.querySelectorAll('.cell');
+    const restartBtn = document.getElementById('restart');
+
+    function render(winningLine) {
+      cells.forEach((cell, i) => {
+        const mark = board[i];
+        cell.textContent = mark || '';
+        cell.classList.toggle('taken', mark !== null);
+        cell.classList.toggle('x', mark === 'X');
+        cell.classList.toggle('o', mark === 'O');
+        cell.classList.toggle('winner', winningLine ? winningLine.includes(i) : false);
+      });
+    }
+
+    function setStatus(text, className) {
+      statusEl.textContent = text;
+      statusEl.className = className;
+    }
+
+    function launchConfetti() {
+      for (let i = 0; i < 80; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+        el.style.width = (6 + Math.random() * 8) + 'px';
+        el.style.height = (6 + Math.random() * 8) + 'px';
+        el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+        el.style.animationDelay = (Math.random() * 0.8) + 's';
+        document.body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+      }
+    }
+
+    function handleClick(e) {
+      const index = parseInt(e.currentTarget.dataset.index, 10);
+      if (gameOver || board[index] !== null) return;
+
+      board[index] = currentPlayer;
+
+      // Pop-in animation on placed cell
+      const cell = cells[index];
+      cell.classList.remove('pop');
+      void cell.offsetWidth; // reflow to restart animation
+      cell.classList.add('pop');
+
+      const winLine = getWinningLine(board, currentPlayer);
+      if (winLine) {
+        gameOver = true;
+        render(winLine);
+        setStatus(`Player ${currentPlayer} wins!`, currentPlayer === 'X' ? 'x-wins' : 'o-wins');
+        launchConfetti();
+        return;
+      }
+
+      if (isBoardFull(board)) {
+        gameOver = true;
+        render(null);
+        setStatus("It's a draw!", 'draw');
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      render(null);
+      setStatus(`Player ${currentPlayer}'s turn`, currentPlayer === 'X' ? 'x-turn' : 'o-turn');
+    }
+
+    function handleRestart() {
+      board = Array(9).fill(null);
+      currentPlayer = 'X';
+      gameOver = false;
+      // Remove pop class from all cells cleanly
+      cells.forEach(cell => cell.classList.remove('pop'));
+      render(null);
+      setStatus("Player X's turn", 'x-turn');
+    }
+
+    cells.forEach(cell => cell.addEventListener('click', handleClick));
+    restartBtn.addEventListener('click', handleRestart);
+
+    render(null);
+    setStatus("Player X's turn", 'x-turn');
+  </script>
+</body>
+</html>
